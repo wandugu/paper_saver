@@ -1,0 +1,35 @@
+# 仅保留目录结构（通过 .gitkeep），忽略目录内所有真实文件
+models/*
+data/*
+
+# 但保留子目录本身与 .gitkeep
+!models/**/
+!data/**/
+!models/**/.gitkeep
+!data/**/.gitkeep
+
+# 额外保护：常见大文件/权重/压缩包
+*.pth
+*.pt
+*.bin
+*.npz
+*.npy
+*.h5
+*.onnx
+*.tar
+*.zip
+*.7z
+
+*.pyc
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+data/
+models/resnest50/
+models/roberta-base/
+nohup.out
+result/
+
+

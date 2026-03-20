@@ -1,0 +1,12 @@
+logging:
+  level: "DEBUG"
+  format: "%(asctime)s - %(levelname)s - %(name)s -   %(message)s"
+  datefmt: "%m/%d/%Y %H:%M:%S"
+  logger_levels:
+    PIL: "WARNING"
+    PIL.PngImagePlugin: "WARNING"
+  test_sample_labels:
+    sample: "测试样本"
+    input: "输入"
+    true_answer: "正确答案"
+    pred_answer: "模型预测"
