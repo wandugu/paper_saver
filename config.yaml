@@ -10,3 +10,25 @@ logging:
     input: "输入"
     true_answer: "正确答案"
     pred_answer: "模型预测"
+
+training:
+  num_epochs: 30
+  batch_size: 32
+  lr: 1.0e-5
+  warmup_ratio: 0.01
+  eval_begin_epoch: 16
+
+model:
+  prompt_len: 10
+  prompt_dim: 800
+
+dataloader:
+  num_workers: 4
+  pin_memory: true
+
+saver:
+  enabled: false
+  threshold: 0.5
+  budget_k: 1
+  lambda_rel: 1.0
+  lambda_cov: 1.0

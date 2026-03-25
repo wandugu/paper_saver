@@ -6,6 +6,8 @@ from TorchCRF import CRF
 from .modeling_bert import BertModel
 from transformers.modeling_outputs import TokenClassifierOutput
 # from torchvision.models import resnet50
+import logging
+from .saver_components import GlobalGroundabilityGate, SISSelector, MiniSetTransformer, SaverFusion
 from transformers import RobertaModel, RobertaConfig, XLMRobertaModel, AlbertModel,BertModel,DistilBertPreTrainedModel
 from fairseq.models.roberta import XLMRModel
 from torchvision.models import resnet50
@@ -73,6 +75,9 @@ class ImageModel(nn.Module):
         return prompt_guids
 
 
+logger = logging.getLogger(__name__)
+
+
 class HMNeTREModel(nn.Module):
     def __init__(self, num_labels, tokenizer, args):
         super(HMNeTREModel, self).__init__()
@@ -94,6 +99,20 @@ class HMNeTREModel(nn.Module):
         self.head_start = tokenizer.convert_tokens_to_ids("<s>")
         self.tail_start = tokenizer.convert_tokens_to_ids("<o>")
         self.tokenizer = tokenizer
+
+        self.use_saver = getattr(self.args, "use_saver", False)
+        self.saver_threshold = getattr(self.args, "saver_threshold", 0.5)
+        self.saver_budget_k = getattr(self.args, "saver_budget_k", 2)
+        if self.use_saver:
+            hidden = self.bert.config.hidden_size
+            self.cgg = GlobalGroundabilityGate(text_dim=hidden * 2, vision_dim=hidden, hidden_dim=128)
+            self.sis_selector = SISSelector(
+                lambda_rel=getattr(self.args, "saver_lambda_rel", 1.0),
+                lambda_cov=getattr(self.args, "saver_lambda_cov", 1.0),
+            )
+            self.set_transformer = MiniSetTransformer(dim=hidden, heads=4)
+            self.image_global_proj = nn.Linear(2048, hidden)
+            self.saver_fusion = SaverFusion(text_dim=hidden * 2, vision_dim=hidden)
 
         if self.args.use_prompt:
             self.image_model = ImageModel()
@@ -154,6 +173,23 @@ class HMNeTREModel(nn.Module):
             tail_hidden = last_hidden_state[i, tail_idx, :].squeeze()
             entity_hidden_state[i] = torch.cat([head_hidden, tail_hidden], dim=-1)
         entity_hidden_state = entity_hidden_state.to(self.args.device)
+
+        if self.use_saver and images is not None:
+            with torch.no_grad():
+                img_feat_map = self.image_model.resnet(images) if hasattr(self, "image_model") else None
+                if img_feat_map is not None and img_feat_map.dim() == 2:
+                    expanded = self.image_global_proj(img_feat_map).unsqueeze(1)
+                    gate_scores, gate_detail = self.cgg(entity_hidden_state, expanded)
+                    gate_mask = (gate_scores >= self.saver_threshold).float()
+                    logger.debug("SAVER gate_scores=%s threshold=%.4f", gate_scores.tolist(), self.saver_threshold)
+                    for b in range(bsz):
+                        if gate_mask[b] > 0:
+                            sel = self.sis_selector.select(entity_hidden_state[b], expanded[b], self.saver_budget_k)
+                            selected_feat = expanded[b, sel.selected_indices or [0], :].unsqueeze(0)
+                            z_set = self.set_transformer(selected_feat)
+                            entity_hidden_state[b:b+1] = self.saver_fusion(entity_hidden_state[b:b+1], z_set, gate_scores[b:b+1])
+                            logger.debug("SAVER sample=%d selected=%s objective=%.6f stats=%s", b, sel.selected_indices, sel.objective, {k: gate_detail[k][b].item() if k!="raw_sims" else gate_detail[k][b].tolist() for k in gate_detail})
+
         logits = self.classifier(entity_hidden_state)
         if labels is not None:
             loss_fn = nn.CrossEntropyLoss()
