@@ -45,6 +45,7 @@ class MMREProcessor(object):
                 dataid.append(i)
 
         assert len(words) == len(relations) == len(heads) == len(tails) == (len(imgids))
+        logger.debug("MMRE %s 样本数=%d", mode, len(words))
 
         # aux image
         aux_path = self.data_path[mode+"_auximgs"]
@@ -109,6 +110,7 @@ class MMPNERProcessor(object):
                     raw_word, raw_target = [], []
 
         assert len(raw_words) == len(raw_targets) == len(imgs), "{}, {}, {}".format(len(raw_words), len(raw_targets), len(imgs))
+        logger.debug("MMPNER %s 样本数=%d", mode, len(raw_words))
         # load aux image
         aux_path = self.data_path[mode+"_auximgs"]
         # aux_path = self.data_path[mode]

@@ -121,6 +121,15 @@ def load_config(config_path):
     with open(config_path, "r", encoding="utf-8") as file:
         return yaml.safe_load(file) or {}
 
+
+def get_cfg(config, *keys, default=None):
+    cur = config
+    for key in keys:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+    return cur
+
 def main():
     config = load_config(os.path.join(os.path.dirname(__file__), "config.yaml"))
     log_config = config.get("logging", {})
@@ -142,15 +151,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_name', default='MRE', type=str, help="The name of dataset.")
     parser.add_argument('--bert_name', default='bert-base-uncased', type=str, help="Pretrained language model path")
-    parser.add_argument('--num_epochs', default=30, type=int, help="num training epochs")
+    parser.add_argument('--num_epochs', default=get_cfg(config, 'training', 'num_epochs', default=30), type=int, help="num training epochs")
     parser.add_argument('--device', default='cuda', type=str, help="cuda or cpu")
-    parser.add_argument('--batch_size', default=32, type=int, help="batch size")
-    parser.add_argument('--lr', default=1e-5, type=float, help="learning rate")
-    parser.add_argument('--warmup_ratio', default=0.01, type=float)
-    parser.add_argument('--eval_begin_epoch', default=16, type=int, help="epoch to start evluate")
+    parser.add_argument('--batch_size', default=get_cfg(config, 'training', 'batch_size', default=32), type=int, help="batch size")
+    parser.add_argument('--lr', default=get_cfg(config, 'training', 'lr', default=1e-5), type=float, help="learning rate")
+    parser.add_argument('--warmup_ratio', default=get_cfg(config, 'training', 'warmup_ratio', default=0.01), type=float)
+    parser.add_argument('--eval_begin_epoch', default=get_cfg(config, 'training', 'eval_begin_epoch', default=16), type=int, help="epoch to start evluate")
     parser.add_argument('--seed', default=1, type=int, help="random seed, default is 1")
-    parser.add_argument('--prompt_len', default=10, type=int, help="prompt length")
-    parser.add_argument('--prompt_dim', default=800, type=int, help="mid dimension of prompt project layer")
+    parser.add_argument('--prompt_len', default=get_cfg(config, 'model', 'prompt_len', default=10), type=int, help="prompt length")
+    parser.add_argument('--prompt_dim', default=get_cfg(config, 'model', 'prompt_dim', default=800), type=int, help="mid dimension of prompt project layer")
     parser.add_argument('--load_path', default=None, type=str, help="Load model from load_path")
     parser.add_argument('--save_path', default=None, type=str, help="save model at save_path")
     parser.add_argument('--save_epochs', default=1, type=int, help="save checkpoint every n epochs")
@@ -164,6 +173,11 @@ def main():
     parser.add_argument('--ignore_idx', default=-100, type=int)
     parser.add_argument('--sample_ratio', default=1.0, type=float, help="only for low resource.")
     parser.add_argument("--resnet_path", type=str, default=None, help="Local path to resnet/resnest .pth")
+    parser.add_argument('--use_saver', action='store_true', default=get_cfg(config, 'saver', 'enabled', default=False))
+    parser.add_argument('--saver_threshold', default=get_cfg(config, 'saver', 'threshold', default=0.5), type=float)
+    parser.add_argument('--saver_budget_k', default=get_cfg(config, 'saver', 'budget_k', default=1), type=int)
+    parser.add_argument('--saver_lambda_rel', default=get_cfg(config, 'saver', 'lambda_rel', default=1.0), type=float)
+    parser.add_argument('--saver_lambda_cov', default=get_cfg(config, 'saver', 'lambda_cov', default=1.0), type=float)
 
     args = parser.parse_args()
 
@@ -185,6 +199,7 @@ def main():
         if not os.path.exists(args.save_path):
             os.makedirs(args.save_path, exist_ok=True)
     print(args)
+    logger.debug("运行参数: %s", vars(args))
     logdir = "logs/" + args.dataset_name + "_" + str(args.batch_size) + "_" + str(args.lr) + args.notes
     # writer = SummaryWriter(logdir=logdir)
     writer = None
@@ -195,15 +210,19 @@ def main():
     processor = data_process(data_path, args.bert_name)
     train_dataset = dataset_class(processor, transform, img_path, aux_path, args.max_seq,
                                   sample_ratio=args.sample_ratio, mode='train')
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4,
-                                  pin_memory=True)
+    num_workers = int(get_cfg(config, "dataloader", "num_workers", default=4))
+    pin_memory = bool(get_cfg(config, "dataloader", "pin_memory", default=True))
+    logger.debug("DataLoader配置: num_workers=%d pin_memory=%s", num_workers, pin_memory)
+
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=num_workers,
+                                  pin_memory=pin_memory)
 
     dev_dataset = dataset_class(processor, transform, img_path, aux_path, args.max_seq, mode='dev')
-    dev_dataloader = DataLoader(dev_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    dev_dataloader = DataLoader(dev_dataset, batch_size=args.batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
 
     test_dataset = dataset_class(processor, transform, img_path, aux_path, args.max_seq, mode='test')
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4,
-                                 pin_memory=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=num_workers,
+                                 pin_memory=pin_memory)
 
     if args.dataset_name == 'MRE':  # RE task
         re_dict = processor.get_relation_dict()
