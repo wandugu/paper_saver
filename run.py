@@ -130,6 +130,7 @@ def get_cfg(config, *keys, default=None):
         cur = cur[key]
     return cur
 
+
 def main():
     config = load_config(os.path.join(os.path.dirname(__file__), "config.yaml"))
     log_config = config.get("logging", {})
@@ -173,11 +174,6 @@ def main():
     parser.add_argument('--ignore_idx', default=-100, type=int)
     parser.add_argument('--sample_ratio', default=1.0, type=float, help="only for low resource.")
     parser.add_argument("--resnet_path", type=str, default=None, help="Local path to resnet/resnest .pth")
-    parser.add_argument('--use_saver', action='store_true', default=get_cfg(config, 'saver', 'enabled', default=False))
-    parser.add_argument('--saver_threshold', default=get_cfg(config, 'saver', 'threshold', default=0.5), type=float)
-    parser.add_argument('--saver_budget_k', default=get_cfg(config, 'saver', 'budget_k', default=1), type=int)
-    parser.add_argument('--saver_lambda_rel', default=get_cfg(config, 'saver', 'lambda_rel', default=1.0), type=float)
-    parser.add_argument('--saver_lambda_cov', default=get_cfg(config, 'saver', 'lambda_cov', default=1.0), type=float)
 
     args = parser.parse_args()
 
@@ -218,7 +214,8 @@ def main():
                                   pin_memory=pin_memory)
 
     dev_dataset = dataset_class(processor, transform, img_path, aux_path, args.max_seq, mode='dev')
-    dev_dataloader = DataLoader(dev_dataset, batch_size=args.batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
+    dev_dataloader = DataLoader(dev_dataset, batch_size=args.batch_size, shuffle=False, num_workers=num_workers,
+                                pin_memory=pin_memory)
 
     test_dataset = dataset_class(processor, transform, img_path, aux_path, args.max_seq, mode='test')
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=num_workers,

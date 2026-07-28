@@ -25,10 +25,3 @@ model:
 dataloader:
   num_workers: 4
   pin_memory: true
-
-saver:
-  enabled: false
-  threshold: 0.5
-  budget_k: 1
-  lambda_rel: 1.0
-  lambda_cov: 1.0

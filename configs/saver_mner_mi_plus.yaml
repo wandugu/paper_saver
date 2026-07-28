@@ -1,0 +1,62 @@
+task: mner
+
+model:
+  text_model_name: answerdotai/ModernBERT-base
+  vision_model_name: google/siglip2-base-patch16-naflex
+  common_size: 256
+  task_hidden_size: 384
+  gate_hidden_size: 256
+  width_embedding_size: 32
+  max_span_width: 10
+  top_k_images: 1
+  selection_type: topk
+  facility_lambda_relevance: 1.0
+  facility_lambda_coverage: 1.0
+  top_r_regions: 3
+  screen_max_num_patches: 64
+  detail_max_num_patches: 256
+  gate_threshold: 0.5
+  target_activation: 0.35
+  utility_margin: 0.0
+  gate_warmup_steps: 500
+  lambda_utility: 0.25
+  lambda_budget: 0.05
+  lambda_consistency: 0.05
+  dropout: 0.1
+  freeze_text_encoder: false
+  freeze_vision_encoder: false
+  attn_implementation: sdpa
+
+data:
+  label_map: data/manifests/mner_mi_plus/labels.json
+  train_jsonl: data/manifests/mner_mi_plus/train.jsonl
+  dev_jsonl: data/manifests/mner_mi_plus/dev.jsonl
+  test_jsonl: data/manifests/mner_mi_plus/test.jsonl
+  calibration_jsonl: null
+  calibration_fraction: 0.10
+  image_root: data/MNER-MI-Plus
+  max_length: 128
+  num_workers: 4
+
+training:
+  epochs: 10
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate_text: 0.00002
+  learning_rate_vision: 0.00001
+  learning_rate_head: 0.0001
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  gate_anneal_steps: 500
+  seed: 42
+  bf16: true
+  target_risk: 0.10
+  calibration_confidence: 0.95
+  calibration_grid_size: 101
+  output_dir: result/saver_mner_mi_plus
+
+runtime:
+  hardware: NVIDIA A800 80GB
+  warmup: 100
+  repeats: 300
+  passes: 3

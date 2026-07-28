@@ -7,6 +7,8 @@ data/*
 !data/**/
 !models/**/.gitkeep
 !data/**/.gitkeep
+!models/*.py
+!models/**/*.py
 
 # 额外保护：常见大文件/权重/压缩包
 *.pth
@@ -27,9 +29,21 @@ __pycache__/
 *$py.class
 
 data/
+!data/
+data/*
+!data/manifest_schema.md
 models/resnest50/
 models/roberta-base/
 nohup.out
 result/
+logs/
+wandb/
+ckpt/
+*.ckpt
 
-
+# Local LaTeX/preview by-products; keep the vector source and final PDF.
+docs/*.aux
+docs/*.fdb_latexmk
+docs/*.fls
+docs/*.log
+docs/*_preview.png
