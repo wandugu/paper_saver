@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 DATASET_NAME="MRE"
-BERT_NAME="models/roberta-base"
+BERT_NAME="${MODEL_ROOT:-models}/roberta-base"
 RESNET_NAME="models/resnet50/resnet50-11ad3fa6.pth"
 LOAD_PATH="ckpt/re/best_model.pth"
 SEED=1234

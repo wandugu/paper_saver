@@ -8,6 +8,8 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import BertTokenizer,RobertaTokenizer,XLMRobertaTokenizer,AutoTokenizer
 from torchvision import transforms
 import logging
+from path_utils import resolve_model_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,7 +19,7 @@ class MMREProcessor(object):
         self.re_path = data_path['re_path']
         # self.tokenizer = BertTokenizer.from_pretrained(bert_name, do_lower_case=True)
         self.tokenizer = RobertaTokenizer.from_pretrained(
-            bert_name,                 # <- 用 run.py 传进来的 args.bert_name
+            resolve_model_path(bert_name),
             do_lower_case=True,
             local_files_only=True
         )

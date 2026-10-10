@@ -6,6 +6,8 @@ import yaml
 
 sys.path.append("..")
 
+from path_utils import resolve_dataset_path, resolve_model_path
+
 import torch
 import numpy as np
 import random
@@ -42,67 +44,67 @@ DATA_PROCESS = {
 DATA_PATH = {
     'MRE': {
         # text data
-        'train': 'data/RE_data/txt/ours_train.txt',
-        'dev': 'data/RE_data/txt/ours_val.txt',
-        'test': 'data/RE_data/txt/ours_test.txt',
+        'train': resolve_dataset_path('data/RE_data/txt/ours_train.txt'),
+        'dev': resolve_dataset_path('data/RE_data/txt/ours_val.txt'),
+        'test': resolve_dataset_path('data/RE_data/txt/ours_test.txt'),
         # {data_id : object_crop_img_path}
-        'train_auximgs': 'data/RE_data/txt/mre_train_dict.pth',
-        'dev_auximgs': 'data/RE_data/txt/mre_dev_dict.pth',
-        'test_auximgs': 'data/RE_data/txt/mre_test_dict.pth',
+        'train_auximgs': resolve_dataset_path('data/RE_data/txt/mre_train_dict.pth'),
+        'dev_auximgs': resolve_dataset_path('data/RE_data/txt/mre_dev_dict.pth'),
+        'test_auximgs': resolve_dataset_path('data/RE_data/txt/mre_test_dict.pth'),
         # relation json data
-        're_path': 'data/RE_data/ours_rel2id.json'
+        're_path': resolve_dataset_path('data/RE_data/ours_rel2id.json')
     },
 
     'twitter15': {
         # text data
-        'train': 'data/NER_data/twitter2015/train.txt',
-        'dev': 'data/NER_data/twitter2015/valid.txt',
-        'test': 'data/NER_data/twitter2015/test.txt',
+        'train': resolve_dataset_path('data/NER_data/twitter2015/train.txt'),
+        'dev': resolve_dataset_path('data/NER_data/twitter2015/valid.txt'),
+        'test': resolve_dataset_path('data/NER_data/twitter2015/test.txt'),
         # {data_id : object_crop_img_path}
-        'train_auximgs': 'data/NER_data/twitter2015/twitter2015_train_dict.pth',
-        'dev_auximgs': 'data/NER_data/twitter2015/twitter2015_val_dict.pth',
-        'test_auximgs': 'data/NER_data/twitter2015/twitter2015_test_dict.pth'
+        'train_auximgs': resolve_dataset_path('data/NER_data/twitter2015/twitter2015_train_dict.pth'),
+        'dev_auximgs': resolve_dataset_path('data/NER_data/twitter2015/twitter2015_val_dict.pth'),
+        'test_auximgs': resolve_dataset_path('data/NER_data/twitter2015/twitter2015_test_dict.pth')
     },
 
     'twitter17': {
         # text data
-        'train': 'data/NER_data/twitter2017/train.txt',
-        'dev': 'data/NER_data/twitter2017/valid.txt',
-        'test': 'data/NER_data/twitter2017/test.txt',
+        'train': resolve_dataset_path('data/NER_data/twitter2017/train.txt'),
+        'dev': resolve_dataset_path('data/NER_data/twitter2017/valid.txt'),
+        'test': resolve_dataset_path('data/NER_data/twitter2017/test.txt'),
         # {data_id : object_crop_img_path}
-        'train_auximgs': 'data/NER_data/twitter2017/twitter2017_train_dict.pth',
-        'dev_auximgs': 'data/NER_data/twitter2017/twitter2017_val_dict.pth',
-        'test_auximgs': 'data/NER_data/twitter2017/twitter2017_test_dict.pth'
+        'train_auximgs': resolve_dataset_path('data/NER_data/twitter2017/twitter2017_train_dict.pth'),
+        'dev_auximgs': resolve_dataset_path('data/NER_data/twitter2017/twitter2017_val_dict.pth'),
+        'test_auximgs': resolve_dataset_path('data/NER_data/twitter2017/twitter2017_test_dict.pth')
     },
 
 }
 
 # image data
 IMG_PATH = {
-    'MRE': {'train': 'data/RE_data/img_org/train/',
-            'dev': 'data/RE_data/img_org/val/',
-            'test': 'data/RE_data/img_org/test'},
-    'twitter15': 'data/NER_data/twitter2015_images',
-    'twitter17': 'data/NER_data/twitter2017_images',
+    'MRE': {'train': resolve_dataset_path('data/RE_data/img_org/train/'),
+            'dev': resolve_dataset_path('data/RE_data/img_org/val/'),
+            'test': resolve_dataset_path('data/RE_data/img_org/test')},
+    'twitter15': resolve_dataset_path('data/NER_data/twitter2015_images'),
+    'twitter17': resolve_dataset_path('data/NER_data/twitter2017_images'),
 }
 
 # auxiliary images
 AUX_PATH = {
     'MRE': {
-        'train': 'data/RE_data/img_vg/train/crops',
-        'dev': 'data/RE_data/img_vg/val/crops',
-        'test': 'data/RE_data/img_vg/test/crops'
+        'train': resolve_dataset_path('data/RE_data/img_vg/train/crops'),
+        'dev': resolve_dataset_path('data/RE_data/img_vg/val/crops'),
+        'test': resolve_dataset_path('data/RE_data/img_vg/test/crops')
     },
     'twitter15': {
-        'train': 'data/NER_data/twitter2015_aux_images/train/crops',
-        'dev': 'data/NER_data/twitter2015_aux_images/val/crops',
-        'test': 'data/NER_data/twitter2015_aux_images/test/crops',
+        'train': resolve_dataset_path('data/NER_data/twitter2015_aux_images/train/crops'),
+        'dev': resolve_dataset_path('data/NER_data/twitter2015_aux_images/val/crops'),
+        'test': resolve_dataset_path('data/NER_data/twitter2015_aux_images/test/crops'),
     },
 
     'twitter17': {
-        'train': 'data/NER_data/twitter2017_aux_images/train/crops',
-        'dev': 'data/NER_data/twitter2017_aux_images/val/crops',
-        'test': 'data/NER_data/twitter2017_aux_images/test/crops',
+        'train': resolve_dataset_path('data/NER_data/twitter2017_aux_images/train/crops'),
+        'dev': resolve_dataset_path('data/NER_data/twitter2017_aux_images/val/crops'),
+        'test': resolve_dataset_path('data/NER_data/twitter2017_aux_images/test/crops'),
     }
 }
 
@@ -176,6 +178,7 @@ def main():
     parser.add_argument("--resnet_path", type=str, default=None, help="Local path to resnet/resnest .pth")
 
     args = parser.parse_args()
+    args.bert_name = resolve_model_path(args.bert_name)
 
     data_path, img_path, aux_path = DATA_PATH[args.dataset_name], IMG_PATH[args.dataset_name], AUX_PATH[
         args.dataset_name]

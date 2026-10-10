@@ -6,6 +6,7 @@ from TorchCRF import CRF
 from .modeling_bert import BertModel
 from transformers.modeling_outputs import TokenClassifierOutput
 # from torchvision.models import resnet50
+from path_utils import resolve_model_path
 from transformers import RobertaModel, RobertaConfig, XLMRobertaModel, AlbertModel,BertModel,DistilBertPreTrainedModel
 from fairseq.models.roberta import XLMRModel
 from torchvision.models import resnet50
@@ -82,7 +83,7 @@ class HMNeTREModel(nn.Module):
         # self.bert_config = RobertaConfig()
         # self.bert = RobertaModel.from_pretrained('roberta-base-uncased')
         # self.bert = RobertaModel.from_pretrained('roberta-base')
-        self.bert = RobertaModel.from_pretrained(self.args.bert_name, local_files_only=True)
+        self.bert = RobertaModel.from_pretrained(resolve_model_path(self.args.bert_name), local_files_only=True)
         # self.bert = AutoModelForMaskedLM.from_pretrained("xlm-roberta-base")
         # self.bert = XLMRobertaModel.from_pretrained('xlm-roberta-base')
         # self.bert.eval()
