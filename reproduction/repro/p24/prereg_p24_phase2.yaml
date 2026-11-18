@@ -1,0 +1,88 @@
+id: P24-phase2-v1
+paper: P24
+registered_on: '2026-11-13'
+phase1_prereg: repro/p24/prereg_p24.yaml
+scope: Frozen-backbone MNRE follow-up; binary gate and Top-1; no adaptive K or backbone changes.
+seeds: [42, 43, 44]
+splits:
+  source: Identical official manifest and per-seed fit/dev/calibration/test IDs to phase1.
+  fit_cap: 4096
+  dev_cap: 512
+  calibration: All pairs of each held-out training post; never split a post.
+  test: Lock all choices before a single test prediction pass per distinct configuration; reuse existing outputs whenever possible.
+experiments:
+  E1:
+    hypothesis: Post-level audit changes the coverage and harm interpretation of pair-level CP.
+    primary: {metric: test_post_harm, direction: minimize, comparator: original_pair_forced_error_CP}
+    other_metrics: [calibration_post_harm, post_harm_ucb, micro_f1, detail_coverage]
+    training: none; reuse frozen checkpoint logits, materializing missing forced-vision logits once if absent.
+    harm: max(0, sum(routed_pair_01_loss - text_pair_01_loss)) / number_of_pairs_in_post
+    grouping: Use manifest group identity shared by the phase1 training/calibration split.
+    alpha: 0.10
+    delta: 0.05
+    threshold_grid: {start: 0.0, stop: 1.0, points: 101}
+    bound: Exact one-sided Bonferroni CP on the indicator of positive post harm, over ALL calibration posts; this conservatively upper-bounds normalized mean harm. Fractional harms are never CP success counts.
+    selection: Per-seed maximum detail coverage subject to simultaneous UCB <= alpha; smallest threshold breaks ties. If no threshold feasible use all-off, with deterministic zero harm and no empirical CP claim.
+    aggregation: Paired seed summaries after independent calibration; never apply mean threshold to pooled predictions.
+    stop: If detail coverage < 0.15 or no feasible threshold, report failure of useful risk-controlled routing; do not relax alpha.
+  E3:
+    hypothesis: SAVER has an advantage over capacity- and input-matched utility routers.
+    primary: {metric: micro_f1, direction: maximize, comparator: phase2_instantaneous_SAVER}
+    routers: [linear, UtilityMLP_K1, saver]
+    input: Exact SAVER gate concatenation of query, Top-1 projected image, product, absolute difference, similarity statistics.
+    utility_target: Identical detached instantaneous text CE minus forced-vision CE with margin 0.05.
+    budget: One hyperparameter configuration per router, AdamW 1e-4, 10 complete epochs, effective batch 16, same seed-specific order and losses.
+    matching: UtilityMLP_K1 uses the same hidden width and parameter count as SAVER gate; record exact router/total parameters and GPU hours; linear intentionally has fewer parameters.
+    stop: No extra tuning after negative results; failed runs count toward development budget.
+  E4:
+    hypothesis: EMA/frozen teachers reduce epoch target flips by at least 20 percent relative to instantaneous student without F1 loss exceeding 0.002.
+    primary: {metric: epoch_flip_rate, direction: minimize, comparator: instantaneous}
+    teachers: [instantaneous, ema, frozen]
+    ema_decay: 0.99
+    frozen_teacher: The completed phase1 SAVER best-dev checkpoint for the same seed, with stop-gradient and eval mode; no test information.
+    budget: Identical to E3; one hyperparameter configuration, 10 complete epochs.
+    diagnostics: Fixed common dev identities across seeds, natural frequency; epoch target labels at eval mode; seed agreement and Cohen kappa; final utility AUROC/Brier against each final student's own forced-vision loss reduction, plus F1.
+    stop: Missing teacher blocks that seed; no substitute checkpoint or extra teacher tuning.
+  E6:
+    hypothesis: Hard-dev selection improves hard-routed test F1 relative to soft-dev selection.
+    primary: {metric: hard_test_micro_f1, direction: maximize, comparator: soft_selected}
+    policies: [soft_selected, hard_selected, last_epoch]
+    selection: Select on dev only; hard dev uses fixed threshold 0.5, final threshold calibrated independently afterward. Ties select earliest epoch.
+    other_metrics: [policy_disagreement_vs_soft, test_post_harm, detail_coverage]
+    reuse: Require retained per-epoch checkpoints and dev scores; deduplicate identical checkpoint+policy test evaluations. Existing phase1 test predictions are reused.
+    stop: Missing non-best checkpoints is BLOCKED, never silently substitute best or retrain phase1. Prospective phase2 checkpoints may be separately labeled.
+  E7:
+    hypothesis: Conditional detail encoding improves batched serving throughput on the same T4.
+    primary: {metric: posts_per_second, direction: maximize, comparator: always_top1}
+    methods: [always_top1, saver_k1]
+    batch_sizes: [1, 8, 16, 32]
+    bucketing: [false, true]
+    profiling_passes: 3
+    warmup_batches: 2
+    population: Fixed dev posts only, shared between methods and all batch settings; no test access.
+    timing: Real batched encoder execution including text/global screening and conditional detail; synchronized end-to-end wall time; no frozen-feature cache.
+    metrics: [posts_per_second, units_per_second, p50_ms, p90_ms, peak_gpu_mib, padding_waste, gpu_utilization]
+    stop: Explicit OOM rows without retry as smaller batches; no throughput-advantage claim if unsupported. Single-attachment MNRE makes attachment bucketing degenerate; report this.
+  D0:
+    sources: Use only the official links from the original dataset papers or appendices.
+    datasets: [MRE-MI, MNER-MI-Plus]
+    provenance: Source URLs, release/revision, SHA256, original-paper statistics versus observed counts.
+    acquisition_approval: Report acquisition and confirm approval before starting any dataset experiment.
+execution:
+  host: ${P24_FORMAL_HOST}
+  physical_gpus: [0, 1, 2]
+  gpu_initial_memory_mib_strictly_below: 500
+  priority: Preserve phase1 workers and profile jobs; phase2 starts only after the corresponding phase1 lane has exited; GPU0 reserved until phase1 profiles finish.
+  tmux_prefix: ${P24_TMUX_PREFIX}
+  record: Config, preregistration and code hashes, parent run, seed, command, input hashes, progress, telemetry, exit code and raw predictions under repro.run.
+  gpu_memory_limit_mib: 14000
+  temperature_limit_c: 80
+  failures: Preserve failed runs and logs; no seed selection, threshold relaxation or hidden retries.
+  tables: Only python -m repro.make_tables over recorded run artifacts.
+gates:
+  - name: E6_requires_retained_epoch_checkpoints
+    experiment: checkpoint_selection
+    metric: checkpoint_complete
+    op: '=='
+    value: 1
+    on_fail: BLOCK

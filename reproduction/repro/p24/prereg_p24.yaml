@@ -1,0 +1,104 @@
+id: P24-phase1-v1
+paper: P24
+registered_on: '2026-11-12'
+purpose: First measured, reduced-scale SAVER experiment. Use only recorded observations as inputs.
+hypotheses:
+  - SAVER improves held-out task F1 relative to text-only and affinity routing.
+  - SAVER reduces detailed visual acquisitions and cold inference latency relative to always-vision.
+primary_metrics:
+  mre: {name: micro_f1_excluding_negative_relation, direction: maximize, minimal_effect_absolute: 0.01}
+  mner: {name: exact_span_type_micro_f1, direction: maximize, minimal_effect_absolute: 0.01}
+  efficiency: {name: detail_encodes_per_sample, direction: minimize, minimal_reduction_relative: 0.20}
+secondary_metrics: [activation_rate, cold_latency_ms, warm_latency_ms, screening_inclusive_flops, peak_gpu_mib]
+seeds: [42, 43, 44]
+pilot_seed: 42
+splits:
+  source: Official train/dev/test; no old predictions or checkpoints.
+  calibration: Seeded 10 percent of official training posts, excluded before training subsampling; no dev/test reuse.
+  fit_cap: 4096
+  dev_cap: 512
+  test: Complete official test; exactly one prediction pass per fitted run after freezing checkpoint and threshold.
+  sampling: Seeded shuffle, independent of labels; same examples across methods for each seed.
+  mner_audit: Valid-image candidate spans, deterministic balancing to minimum class count including None; record raw and balanced populations.
+  leakage: Group duplicate post/image identities within training when separating calibration; record cross-official-split duplicates without moving test examples.
+models:
+  text: answerdotai/ModernBERT-base
+  vision_preferred: google/siglip2-base-patch16-naflex
+  substitution: Closest public SigLIP-2 or SigLIP base only if preferred unavailable; pin revision and hashes before pilot.
+  adaptation: Both pretrained backbones frozen; train span/pair projections, visual projections, gate, attention, fusion, classifier.
+  scope: The reduced-scale experiment evaluates frozen encoders only. Full fine-tuning is outside its scope.
+method:
+  task_hidden: 384
+  query_hidden: 256
+  attention_heads: 4
+  max_length: 128
+  max_span_width: 10
+  global_patches: 64
+  detail_patches: 256
+  top_k: 1
+  top_r: 3
+  dropout: 0.10
+  utility_margin: 0.05
+  loss_weights: {task: 1.0, utility: 0.25, budget: 0.05, consistency: 0.05}
+  rho: 0.35
+  force_steps: 500
+  anneal_steps: 500
+  no_image: Exact text fallback; no global or detail forward for missing images.
+  training_features: Frozen encoder outputs may be cached; task projections and routing remain learned. Cold inference recomputes global and activated detail paths.
+optimization:
+  optimizer: AdamW
+  learning_rate: 0.0001
+  betas: [0.9, 0.999]
+  weight_decay: 0.01
+  clip_norm: 1.0
+  epochs: 10
+  effective_batch: 16
+  schedule: 10 percent warmup then cosine decay
+  checkpoint: Best dev soft-routed F1, earliest tie; patience 3 only after optimizer step 1000.
+  mner_negative_ratio: 3
+  mner_negative_weight: 0.25
+calibration:
+  threshold_grid: {start: 0, stop: 1, step: 0.01, count: 101}
+  error: Forced-vision label error, never routed error or harm substituted for it.
+  upper_bound: One-sided exact Clopper-Pearson with Bonferroni delta/101.
+  alpha: 0.10
+  delta: 0.05
+  selection: Largest nonempty feasible coverage, smallest threshold tie; empty/no feasible subset disables detail using infinity.
+  maxsim: Same screening/query inputs; score (1+max cosine)/2; same CP audit.
+  random: Seeded label-independent uniforms; fit selected activation probability to SAVER calibration activation of matching task and seed; no threshold relaxation.
+baselines: [text_only, always_vision, maxsim, random_matched]
+ablations: [saver_mean_pool, saver_top2]
+always_vision: Re-encode every valid attachment at detail resolution; pool selected top image. This is also the no-gate ablation and is not rerun redundantly.
+pilot:
+  training_samples: 32
+  dev_samples: 16
+  calibration_samples: 16
+  optimizer_steps: 12
+  force_steps: 4
+  anneal_steps: 4
+  test_access: Forbidden; pilot uses only train and dev.
+  pass_criteria: Finite losses, nonzero gate and visual-fusion gradients, finite gate scores, exact missing-image fallback, real global/detail CUDA forwards, memory under 14000 MiB, no OOM.
+  cp_feasibility: Pilot may have no feasible CP threshold; all-off is the required valid result, not a reason to relax alpha.
+  failure_action: Preserve BLOCKED or FAILED run and stop further runs; repair implementation faults only, never tune against outcomes.
+profiling:
+  gpu: All comparative latency measurements on ${P24_FORMAL_HOST} T4 with batch one.
+  population: First 32 dev posts by stable ID, no test-label access or extra test evaluation.
+  warmups: 10
+  measured_repeats: 3
+  cold: Models resident, raw RGB images in memory; include preprocessing, H2D, text, global screening and conditional detail. No feature reuse between samples.
+  warm: Reuse previously encoded visual global and detail features for same post; text still recomputed. Cache hits explicitly counted.
+  flops: PyTorch profiler executed supported operators, plus operator coverage report; count global screening even when gate off; never label partial FLOPs as complete.
+budgets:
+  total_runs_max: 42
+  gpu_memory_mib_max: 14000
+  temperature_c_max: 80
+  task_availability: Omit MNER only if Twitter-2017 cannot be obtained; record search evidence.
+  hosts: Use the same designated T4 for each comparative latency measurement.
+outcome_policy:
+  - Report all three seeds and failed runs, including zero activation or worse F1.
+  - No new hyperparameter search, seed replacement, threshold relaxation, or selective omission.
+  - Timeouts/OOM are recorded failures; do not silently reduce a formal run's scope.
+  - If time budget prevents completion, report unfinished runs and no-run table cells.
+  - Estimated queue times are operational estimates, never experimental results.
+gates:
+  - {name: pilot_checks, experiment: pilot, metric: pilot_pass, op: '==', value: true, on_fail: BLOCK}

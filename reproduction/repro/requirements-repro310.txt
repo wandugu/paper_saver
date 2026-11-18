@@ -1,0 +1,7 @@
+# P24 Python 3.10 dependencies for the pinned CUDA 11.8 environment.
+--extra-index-url https://download.pytorch.org/whl/cu118
+-r p24/requirements.txt
+numpy==2.2.6
+tokenizers==0.22.2
+requests
+urllib3

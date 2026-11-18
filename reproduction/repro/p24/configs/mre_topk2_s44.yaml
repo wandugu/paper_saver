@@ -1,0 +1,9 @@
+{
+  "task": "mre",
+  "method": "topk2",
+  "manifest": "data/p24/mnre_remote.jsonl",
+  "inventory": "data/p24/resource_inventory.json",
+  "text_model": "${MODEL_ROOT}/ModernBERT-base",
+  "vision_model": "${MODEL_ROOT}/siglip2-base-patch16-naflex",
+  "cache": "data/p24/features-v1"
+}

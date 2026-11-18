@@ -1,0 +1,8 @@
+{
+  "manifest": "${DATASET_ROOT}/p24/mnre_remote.jsonl",
+  "source_repo": "${P24_REPO_ROOT}",
+  "phase1_root": "${P24_REPO_ROOT}/tmp/p24_phase1/runs",
+  "phase2_root": "${P24_REPO_ROOT}/tmp/p24_phase2/runs",
+  "phase3_root": "${P24_RUN_ROOT}/p24_phase3",
+  "phase4_root": "${P24_RUN_ROOT}/p24_phase4_runs"
+}

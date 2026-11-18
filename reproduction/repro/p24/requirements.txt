@@ -1,0 +1,6 @@
+transformers==4.57.1
+torch==2.6.0+cu118
+Pillow==12.3.0
+PyYAML==6.0.3
+scipy==1.15.3
+pytest==8.4.2

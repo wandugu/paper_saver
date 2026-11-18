@@ -1,0 +1,151 @@
+id: P24-phase5-v1
+paper: P24
+gates: []
+registered_on: '2026-11-14'
+parent_commit: 3a6bacc6a
+status: post-test-observation preregistration before new experiments
+deadlines:
+  A7_remaining_start: '2026-11-14T18:00:00+08:00'
+  optional_window: ['2026-11-15T10:00:00+08:00', '2026-11-15T12:00:00+08:00']
+resources:
+  host: ${P24_FORMAL_HOST}
+  physical_gpu: 1
+  forbidden_gpus: [0, 2]
+  initial_guard: Before acquisition, memory < 1536 MiB and no unrelated compute process.
+  A8_guard: Release the training lease, then check memory and compute processes before obtaining a fresh exclusive lease for timing.
+  new_cache_bytes_max: 10000000000
+  cache_rule: Check root filesystem free bytes before additions; only create absent files in the original cache, never replace any existing feature file.
+data:
+  seeds: [42, 43, 44]
+  source_repo: ${P24_REPO_ROOT}
+  paths: Absolute manifest, cache, inventory paths in every new config.
+  reduced: {fit_cap: 4096, dev_cap: 512}
+  uncapped: {fit_cap: null, dev_cap: null}
+  split_option: b
+  split_rule: Preserve the original 10% post-group calibration holdout and seed shuffle; uncapped sensitivity uses 2/5/10%, 20% is not applicable.
+  reduced_calibration_fractions: [0.02, 0.05, 0.10, 0.20]
+  reduced_20_percent: CPU extraction of text_only and MaxSim if CPU time permits; otherwise explicitly not applicable, never interpolate missing predictions.
+  uncapped_calibration_fractions: [0.02, 0.05, 0.10]
+  test_rule: All new experiments are post hoc after prior test observation; decisions use dev and calibration only; test is descriptive, with no seed/configuration selection.
+statistics:
+  delta1: 0.04800512593555851
+  delta1_method: Maximum half-width of paired post-bootstrap 95% CI for MaxSim all-off minus same-seed independent text_only on exactly the original 512 dev units; 2000 draws, RNG 20261113 + seed.
+  delta1_source: repro/p24/phase5_delta1.json
+  delta1_script: repro/p24/phase5_preregister.py
+  delta1_fallback: 0.02 only if an existing MaxSim dev all-off prediction field is unavailable; not invoked.
+  bootstrap_replicates: 2000
+  confidence: 0.95
+  paired_bootstrap_rng: 20261113 + seed
+  auroc_bootstrap_rng: 20261114 + seed
+  auroc_resampling: Paired resampling of posts, retaining their units; skip single-class replicates and report valid replicate count; undefined AUROC cannot pass.
+  auroc_labels: Unit label is forced-on correct minus anchor correct > 0; post label is mean forced-on accuracy minus anchor accuracy > 0; zero gains are negative, report negative/zero separately.
+  auroc_primary: Post AUROC; also report unit AUROC and Brier using the same new labels.
+training:
+  epochs_max: 10
+  learning_rate: 0.0001
+  optimizer: AdamW
+  betas: [0.9, 0.999]
+  weight_decay: 0.01
+  accumulation: 16
+  early_stop: Original rule, step >= 1000 and stale epochs >= 3.
+  checkpoint_selection: Max hard-routed dev micro-F1 at tau 0.5; strict improvement only; retain all-off dev F1, logits and per-example predictions at selected epoch.
+  original_controls: A6 text_only and always_vision preserve the original losses and optimizer; cap passthrough is the only protocol change.
+A1:
+  text_ce_lambda: 1.0
+  route_dropout_p_off: 0.3
+  route_dropout: Independent Bernoulli per unit during training, forcing eta=0 after the gate floor; no straight-through alternative.
+  initialization: Original same-seed random initialization; no pretrained text initialization.
+  fallback_pass: On same 512 dev units, paired 95% CI lower bound of all-off minus same-seed independent text_only >= -delta1, for each seed.
+  conservative_comparison: Independent text best.pt maximizes text dev F1, while A1 all-off is read at the checkpoint chosen by hard routed dev F1; disclose this selection asymmetry.
+  nonsaturation: At least 10 of the 101 dev thresholds have 0 < distinct detail/post < 1.
+  discrimination_condition_3: At cap 1/4 the chosen policy has lower calibration harm OR higher dev F1 than rate-matched Random (five seeds 2401-2405, compare their mean); OR the bootstrap 95% lower bound of calibration new-label post AUROC > 0.5.
+  selective_success: Fallback pass AND nonsaturation AND discrimination condition (3); conditions (1)(2) alone do not count.
+A2:
+  anchor: Same-seed phase1 text_only best.pt; for uncapped A7 use the matching A6 text_only checkpoint.
+  frozen_modules: [width_embedding, span_projection, pair_projection, classifier]
+  residual: Independent visual_residual_head; vision_logits = anchor_logits + residual_head(visual_state); routed_logits = anchor_logits + eta * residual, with exact torch.where return at eta=0.
+  loading: strict=False, record missing/unexpected keys and assert missing keys are exactly visual_residual_head weight/bias and unexpected is empty.
+  correctness: CPU bitwise equality of eta=0 logits to text_only best.pt on every cached original dev example before any A2 GPU job; verify frozen gradients and unchanged anchor parameters.
+  success: At least 2/3 seeds select nonempty dual-feasible cap-1/4 policy with 0 < D/post < 1 and condition (3).
+  stop_router_variants: If all three forced-on minus anchor dev paired CIs fail to have lower bound >0 AND all three calibration post-AUROC CIs contain 0.5, stop router variants and retain A4 certificate results.
+A3a:
+  run_in: [A1, A2]
+  utility_reference: A1 trained text branch; A2 frozen capable anchor; report run-in CE-margin labels and calibration correctness-gain labels distinctly.
+  reports: [unit_AUROC, post_AUROC, bootstrap_CI, Brier, positive_negative_zero_counts]
+  success: All 3/3 seeds have calibration new-label post AUROC bootstrap 95% lower bound >0.5 AND point AUROC greater than same-calibration text 1-max-p AUROC.
+  failure: Stop gate direction; label-positive-rate changes alone are not evidence of value.
+A3b:
+  optional: true
+  prerequisites: A1/A2 repair fallback, AUROC fails, A6 is go, and optional window is available.
+  method: Two-fold out-of-fold text_only and always_vision labels, add 1-max-p gate input; three seeds; no tuning.
+A4:
+  primary_scorer: saver
+  baselines: [maxsim, text_uncertainty_1_minus_max_p]
+  anchor: Independent capable text_only predictions, not the failed same-checkpoint all-off.
+  on_branch: Corresponding frozen forced-on branch for saver/maxsim; uncertainty ranks the SAVER forced-on branch to isolate scoring.
+  grid: 101 fixed thresholds from 0 through 1 in steps of 0.01 plus explicit structural all-off.
+  alpha_harm: 0.10
+  delta: 0.05
+  allocation_per_bound_per_policy: 0.05 / (2 * 101)
+  harm: Exact one-sided Clopper-Pearson upper bound on indicators that routed post accuracy is lower than capable-anchor post accuracy; bounds positive structured harm.
+  cost: One-sided Hoeffding min(1, mean(B)+sqrt(log(2*101/0.05)/(2*n_posts))); B=distinct acquired detail images/max(1, valid post images), in [0,1].
+  caps: [0.25, 0.35, 0.50]
+  all_off: Returns capable anchor with exact zero incremental harm and cost.
+  selector: Among nonempty dual-feasible policies maximize dev micro-F1; ties lower dev empirical cost, then larger threshold, then deterministic policy id. If none, explicit all-off and fallback=1.
+  reporting: Report every available scorer/cap/fraction/seed cell, both endpoints, harm/cost UCB, dev/test F1, D/post, F1-text and fallback; unavailable cells explicit.
+  interpretation: If text 1-max-p is no worse than SAVER gate in dev F1 and calibration harm at matched cap/fraction, state learning the gate brought no value; report all per-seed comparisons, never pick cells.
+  no_stop_loss: Both positive and negative results are retained; if no scorer has safe acquisition region report it.
+A5:
+  diagnostics: [unit_oracle_text_vs_forced_on, text_seed_control_oracle_both_directions, text_confidence_quintile_fix_minus_break, relation_strata, maxsim_within_checkpoint_prediction_flips]
+  source: Existing per-example logs; recompute through repro.run and repro.make_tables; diagnostics use test descriptively only.
+A6:
+  methods: [text_only, always_vision]
+  seeds: [42, 43, 44]
+  caps: {fit_cap: null, dev_cap: null}
+  primary: Full 1624-pair dev micro-F1; paired bootstrap over posts.
+  go: Always-vision minus text-only full-dev F1 >0 for 3/3 seeds AND paired bootstrap 95% CI lower bound >0 for at least 2/3 seeds.
+  no_go: Any failure of go; stop all accuracy-oriented GPU work including running A7, and do not start remaining A7.
+  selection_bias: Full dev also controls early stopping of both arms; disclose optimistic model selection.
+  C2_failure: Still run all six A6 jobs as analytical evidence.
+A7:
+  configuration_selection: Prefer A1/A2 with more C2-passing seeds; tie by mean calibration new-label post AUROC; final tie A2. Undefined AUROC ranks below defined values.
+  protocol: Same uncapped split as A6; SAVER three seeds and matched MaxSim three seeds.
+  pilot: s42 after C2, concurrently with A6.
+  success: At least 2/3 seeds have nonempty dual-feasible 0<D/post<1 policy, dev paired CI lower bound relative to same-seed uncapped text >=-delta1, and condition (3).
+  remaining_prerequisites: C2 and C4 pass, C3 go, start by 2026-11-14 18:00 Asia/Shanghai; otherwise cancel remaining jobs and retain pilot as such.
+A8:
+  conditional: Selective policy exists AND fresh exclusive GPU1 lease; no other compute job.
+  methods: [screen_only, selected_policy, always_detail]
+  batch_sizes: [1, 8, 16, 32]
+  protocol: Phase4 protocol, three warmup and ten measured repetitions on same frozen posts, CUDA events plus GPU utilization and peak memory; end-to-end mean/P90, posts/s and stage timing when instrumentation exists.
+  skip: No selective policy or no exclusive card; cite legacy E7 endpoints with their limitations, no inferred new latency.
+A9:
+  random_seeds: [2401, 2402, 2403, 2404, 2405]
+  matching: Exactly round(realized selected-policy activation rate*n_units) eligible units per population; choose without labels; report target/realized unit rate, D/post, F1 and harm for all five draws and mean/min/max.
+  zero_rate: If A1/A2 yield no selective policy, add no redundant zero-rate new Random row; keep historical row and explanation.
+  preserve: [E3_FAIL, E6_FAIL, D1_FAIL, original_zero_activation_Random_rows]
+  E3_disclosure: UtilityMLP was a deepcopy of SAVER gate (phase2_training.py:57), an implementation error; identical rows are not an independent baseline.
+  E6_disclosure: Legacy hard and soft FAIL remains; A1 is post hoc and cannot replace it.
+  D1_disclosure: All 9/9 fallback cells remain.
+  original_Random_disclosure: Original SAVER dual policy fell back all-off, so matched rate was zero and Random F1 equals failed all-off F1.
+  UtilityMLP_retraining: Optional only in 2026-11-15 10:00-12:00 window; keep failure disclosure regardless.
+A10: Not performed.
+checkpoints:
+  C1: After A1 s42, continue A1 s43/s44 iff fallback condition (1) passes; otherwise skip them and run A2 only. Passing (1) but failing (2)/(3) is fallback repair only.
+  C2: After A1/A2 CPU replay, at least one configuration has >=2/3 seeds with nonempty cap-1/4 dual-feasible policy, 0<D/post<1 and condition (3). If false, stop A7/A8 selective direction, A6 still runs.
+  C4: After A7 s42 and replay, stop remaining A7/MaxSim if hard all-off paired lower bound <-delta1 or selected D/post is not in (0,1).
+  C3: After all A6 runs, apply the fixed A6 go rule; no-go immediately stops accuracy-oriented GPU jobs including A7.
+integrity:
+  launch: Every experiment via python -m repro.run, append-only ledger.
+  tables: Only python -m repro.make_tables generates numeric tables.
+  reporting: Record the decision and its evidence at every stop-loss checkpoint.
+runtime_amendment_20261114_1252:
+  reason: The shared repro310 environment was mistakenly used (transformers 5.15.0); original phase1 used the preserved .venv-p24-310 environment (transformers 4.57.1). All prior phase5 runs are excluded uniformly for this protocol error, regardless of result.
+  python: ${P24_REPO_ROOT}/.venv-p24-310/bin/python
+  torch: 2.6.0+cu118
+  transformers: 4.57.1
+  formal_runs_root: ${P24_RUN_ROOT}/p24_phase5_pinned
+  old_runs_preserved: ${P24_RUN_ROOT}/p24_phase5
+  exclusions: repro/p24/phase5_runtime_exclusions.json
+  cache: Preserve every existing file; newly added 5.15.0 cache files are excluded by exact path relative to the configured feature root and replaced only by newly created phase5-tf4571- prefixed files in the original namespace directory; original 4.57.1 cache remains reused. Count all new files from both attempts toward 10GB cap.
+  unchanged_rules: All seeds, losses, dropout, delta1, thresholds, certificate formulas, split option b, go/no-go rules and launch deadlines remain exactly as preregistered. C1 then C2 then C3 are rerun on the pinned environment; old decisions have no selection authority.

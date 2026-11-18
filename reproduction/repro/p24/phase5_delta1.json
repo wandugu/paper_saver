@@ -1,0 +1,75 @@
+{
+  "bootstrap_replicates": 2000,
+  "bootstrap_rng": "20261113 + seed",
+  "confidence": 0.95,
+  "delta1": 0.04800512593555851,
+  "fallback_constant": 0.02,
+  "resampling_unit": "post",
+  "rule": "maximum paired-bootstrap CI half-width across seeds",
+  "seeds": {
+    "42": {
+      "all_off_predictions_available": true,
+      "ci_half_width": 0.03826006185859136,
+      "comparison": {
+        "ci_high": 0.01701099519149496,
+        "ci_low": -0.05950912852568777,
+        "disagree_posts": 42,
+        "f1_delta": -0.021848739495798297,
+        "harm_vs_reference": 0.0338409475465313,
+        "mean_post_accuracy_delta": -0.01670896785109983,
+        "n_posts": 394,
+        "negative_posts": 17,
+        "positive_posts": 10,
+        "post_disagreement": 0.1065989847715736
+      },
+      "maxsim_path": "${P24_RUN_ROOT}/p24_phase4_runs/P24/P24_phase4_extract_s42_20261113T155136Z_7c2a70/raw/maxsim_dev.jsonl",
+      "maxsim_sha256": "de0aa33cfad7bbd01a979a24bef953a9560c4c052a8f22c34f69fcb5e1997a59",
+      "n_units": 512,
+      "text_path": "${P24_RUN_ROOT}/p24_phase3/P24/P24_phase3_extract_s42_20261113T104018Z_c116f7/raw/independent_dev.jsonl",
+      "text_sha256": "7afd38472a7cca98619378a1f2d07a1969009dbb34d2f788f3e69bce7170dd34"
+    },
+    "43": {
+      "all_off_predictions_available": true,
+      "ci_half_width": 0.04800512593555851,
+      "comparison": {
+        "ci_high": 0.016532653249185833,
+        "ci_low": -0.07947759862193118,
+        "disagree_posts": 65,
+        "f1_delta": -0.033320825515947505,
+        "harm_vs_reference": 0.05897435897435897,
+        "mean_post_accuracy_delta": -0.021196581196581195,
+        "n_posts": 390,
+        "negative_posts": 28,
+        "positive_posts": 17,
+        "post_disagreement": 0.16666666666666666
+      },
+      "maxsim_path": "${P24_RUN_ROOT}/p24_phase4_runs/P24/P24_phase4_extract_s43_20261113T155341Z_5d9b1a/raw/maxsim_dev.jsonl",
+      "maxsim_sha256": "b664d87e456ce0dd429ba4cd805e43df216570285d38e82b32d22fb3b80e634d",
+      "n_units": 512,
+      "text_path": "${P24_RUN_ROOT}/p24_phase3/P24/P24_phase3_extract_s43_20261113T104618Z_67a652/raw/independent_dev.jsonl",
+      "text_sha256": "3593e32563d19b9a638983f71b5ca491880622bb00f7cdf1b11fdda93bbe5575"
+    },
+    "44": {
+      "all_off_predictions_available": true,
+      "ci_half_width": 0.03481476184986002,
+      "comparison": {
+        "ci_high": 0.022698540111277386,
+        "ci_low": -0.04693098358844266,
+        "disagree_posts": 38,
+        "f1_delta": -0.01135659715052656,
+        "harm_vs_reference": 0.037614297589359934,
+        "mean_post_accuracy_delta": -0.022028262676641725,
+        "n_posts": 401,
+        "negative_posts": 19,
+        "positive_posts": 7,
+        "post_disagreement": 0.09476309226932668
+      },
+      "maxsim_path": "${P24_RUN_ROOT}/p24_phase4_runs/P24/P24_phase4_extract_s44_20261113T155555Z_9fdd2d/raw/maxsim_dev.jsonl",
+      "maxsim_sha256": "f6bf4b9cc1028017b236a67e7d20d2de244fe35f8e19928f03851205ce7fddf9",
+      "n_units": 512,
+      "text_path": "${P24_RUN_ROOT}/p24_phase3/P24/P24_phase3_extract_s44_20261113T105231Z_0e8cf0/raw/independent_dev.jsonl",
+      "text_sha256": "0c9a17848a4db9cfad2aab518857367210dd9d25aaff6ea35de08c7342640011"
+    }
+  },
+  "test_used": false
+}

@@ -1,0 +1,5 @@
+{
+  "checkpoint": "C1",
+  "run": "${P24_RUN_ROOT}/p24_phase5/P24/P24_phase5_training_s42_20261114T034248Z_250263",
+  "anchor_dev": "${P24_RUN_ROOT}/p24_phase3/P24/P24_phase3_extract_s42_20261113T104018Z_c116f7/raw/independent_dev.jsonl"
+}

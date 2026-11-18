@@ -1,0 +1,31 @@
+{
+  "models": {
+    "text": {
+      "repository": "answerdotai/ModernBERT-base",
+      "revision": "8949b909ec900327062f0ebf497f51aef5e6f0c8",
+      "weights_sha256": "340ac08b74eef0d7bdec2d7981a6a3d4249bf0e6aab60634b72ad02c2b8023a9"
+    },
+    "vision": {
+      "repository": "google/siglip2-base-patch16-naflex",
+      "revision": "b53b807d3a2d5e2b3911292f2d69e5341cdc064c",
+      "weights_sha256": "ac5f28bbdf92c0c1696ccbd3ce716426049cd67ad8045b66d0d938b0f9c8bbec"
+    }
+  },
+  "model_source": "https://hf-mirror.com",
+  "replacement": null,
+  "mnre": {
+    "source": "Local copy of the original MNRE/HVPNeT release; upstream immutable revision unavailable",
+    "normalized_local_sha256": "a39f04b6c9c9ef8d2f5fc4c2a1b9b48daba19343af2dc0e196ece02d12737277",
+    "normalized_remote_sha256": "c412aea46829db0e800429398b2593dce8cce17d00fadcc76e2fb015aec28448",
+    "image_manifest_sha256": "818b58ce952c16ae5b537121b999d322ef6705f02f3cc52a0ae8ba94a224e383",
+    "path_mapping": "data/p24/path_mapping.json",
+    "per_image_hashes": "data/p24/mnre/image_manifest.jsonl"
+  },
+  "twitter2017": {
+    "source": "Local UMT annotation release; upstream immutable revision unavailable",
+    "normalized_sha256": "6643de17c25d37d52fe0006ed97bc9ac7e9545a48e3ba83ca15413b9399f9e01",
+    "status": "annotations_only_no_images; MNER formal runs omitted, never replace missing images with fabricated inputs",
+    "search_evidence": "data/p24/twitter2017/source_access_evidence.json"
+  },
+  "complete_inventory": "data/p24/resource_inventory.json"
+}

@@ -1,0 +1,70 @@
+id: P24-phase6-e1-v1
+paper: P24
+gates:
+  - {metric: exact_replay, op: '==', value: true, on_fail: BLOCK}
+scope: Post hoc CPU-only reanalysis of already viewed phase5 outcomes; no training, no new encoder calls, no efficacy gates.
+runtime:
+  python: ${P24_REPO_ROOT}/.venv-p24-310/bin/python
+  torch: 2.6.0+cu118
+  transformers: 4.57.1
+  CUDA_VISIBLE_DEVICES: ''
+  OMP_NUM_THREADS: 4
+  torch_threads: 4
+  nice: 19
+phase5_root: ${P24_RUN_ROOT}/p24_phase5_pinned
+phase5_ledger_sha256: 53c3bd3af17be69935284adaea06f2e5504e076e60177830f8da9fc258bd8146
+phase5_code: 5a83b33dad1b77344cfe522e4de9d2737150f0e5
+manifest_sha256: c412aea46829db0e800429398b2593dce8cce17d00fadcc76e2fb015aec28448
+sources: repro/p24/phase5_sources.json
+seeds: [42, 43, 44]
+E1a:
+  arms: [always_vision, text_only]
+  splits: [dev, test]
+  frozen_split_caps: {fit_cap: null, dev_cap: null}
+  units: {dev: 1624, test: 1614}
+  dev_posts: 931
+  metric: MRE micro-F1 via protocol.task_f1, excluding label 0 (None).
+  dev_replay: Use the unchanged phase5 C3 path (Population and paired re-exported by phase5_analysis), sorted unit IDs, original seed 20261113+seed, 2000 draws. Compare full precision binary64 and all other fields to C3 metrics from the pinned ledger, and five-decimal displays to the recovered delivery.
+  dev_display:
+    42: ['-0.02863', '-0.06235', '0.00394']
+    43: ['0.00684', '-0.02255', '0.03686']
+    44: ['0.00735', '-0.02460', '0.04071']
+  test_display_text: ['0.45217', '0.44341', '0.43964']
+  test_display_vision: ['0.42077', '0.48944', '0.44311']
+  test_seed_bootstrap: {draws: 2000, base: 20261118, seed_rule: base_plus_training_seed}
+  pooled_bootstrap:
+    draws: 10000
+    random_seeds: {dev: 20261118, test: 20261119}
+    rule: Sort phase5 post IDs; draw n posts with replacement once per replicate, shared across seeds; take arithmetic mean of the three recomputed F1 differences. Use numpy.default_rng and linear percentile quantiles at .025, .975 and .95 (one-sided upper).
+  SE: Sample SD (ddof=1) of bootstrap draws, with original phase5 draws used for per-seed dev SE.
+  MDE80: 2.80 * bootstrap_SE (two-sided alpha .05, normal approximation).
+  seed_t: {n: 3, sd_ddof: 1, two_sided_critical: 4.303, upper_critical: 2.920}
+  interpretation: Post bootstrap is conditional on the three fitted models; t intervals use the three training-seed differences and address training randomness. Full dev also selected checkpoints; test is descriptive and was already viewed.
+E1b:
+  studies: [A1, A2]
+  analysis_revision: v4
+  split: calibration
+  posts_per_seed: 736
+  align: Reuse phase5 study_sources, subset, align and population; branch vision_prediction versus independently trained phase1 text prediction. Scores are post means of gate and 1-max(p_text). Positive label iff mean pair correctness gain > 0; zero gains are negative labels.
+  replay: Require exact binary64 equality of both point AUROCs and exact gain-sign counts against pinned v4 metrics; verify displays against final delivery.
+  gate_display: {A1: ['0.61635', '0.63204', '0.57200'], A2: ['0.59531', '0.64619', '0.57602']}
+  uncertainty_display: {A1: ['0.82400', '0.74535', '0.75627'], A2: ['0.77297', '0.80512', '0.73800']}
+  bootstrap: {draws: 2000, base: 20261118, seed_rule: base_plus_training_seed}
+  statistic: Both scorers use the same resampled posts; rank-based AUROC with average ties; skip and count one-class draws. Report point, .025/.975 linear percentile CI, and arithmetic mean of the three point differences (calibration sets differ, no pooled interval).
+E1c:
+  rule: A3a post gain is mean pair correctness(vision) minus mean pair correctness(text); positive is fix and negative break, ties excluded. No all-pairs-exact-match redefinition.
+  A1_fix_break: [[41, 42], [44, 58], [43, 88]]
+  test: Exact two-sided binomial, p=.5; p=1 when no discordant posts.
+  pooled: Sum the three seed counts; show sign-test p descriptively only because seed counts are not independent.
+epsilon:
+  source: E1a.dev.pooled.SE
+  raw_formula: '2 * 1.645 * SE_pool_dev'
+  formula: 'min(0.05, max(0.02, ceil(epsilon_raw / 0.005) * 0.005))'
+  null_bounded_probability: 'Phi(epsilon / SE_pool_dev - 1.645)'
+  probability_scope: Single-upper-bound normal approximation at true effect zero and unchanged SE. E2 requires both bounds; this is not the joint probability or a model for other E2 decisions.
+  upper_clip_disclosure: If upper clipped, the approximate opportunity is below 95%, and 1 minus that value is the approximate inconclusive probability in the stated null approximation.
+integrity:
+  stop: Any failed replay or validation stops E1 and all subsequent steps; do not create epsilon.
+  table_prefix: p24_phase6_E1
+  launch: python -m repro.run p24 phase6_e1
+  tables: python -m repro.make_tables

@@ -1,55 +1,69 @@
+# Correction (2026-11)
+
+The SAVER results in the README at commit `1e38beec`, including every table
+under “Main Results (SAVER),” are retracted. Our audit found no supporting
+run records for those numbers. It also found no run records for the
+five-seed NVIDIA A800 protocol, the checkpoint profiling commands, or the
+MRE-MI and MNER-MI-Plus configurations below. The logged reproduction did
+not run any of them.
+
+The logged reproduction in [`reproduction/`](reproduction/README.md) used
+MNRE only, with frozen ModernBERT and SigLIP 2 encoders and a single NVIDIA
+T4 per GPU run. In the uncapped MNRE comparison, the always-vision model
+showed no measurable development-set improvement over the independently
+trained text-only model under the preregistered decision rule. The full
+development set also served for early stopping. Test results were descriptive. See the
+[logged reproduction findings](#logged-reproduction-reproduction).
+
 # SAVER
 
-This repository now contains a paper-aligned SAVER implementation alongside
-the original RSRNeT code.
+This repository contains a SAVER implementation alongside the original
+RSRNeT code and the logged reproduction harness.
 
-The independent SAVER path uses:
+The top-level SAVER implementation uses:
 
-- `answerdotai/ModernBERT-base` for text;
-- `google/siglip2-base-patch16-naflex` for every attached image;
-- a low-patch global screen for all attachments;
-- a learned unit-level gate with an equal-input parameter-free MaxSim control;
-- Top-1 attachment retrieval by default;
-- high-patch SigLIP-2 re-encoding only for selected, active attachments;
+- `answerdotai/ModernBERT-base` for text
+- `google/siglip2-base-patch16-naflex` for every attached image
+- a low-patch global screen for all attachments
+- a learned unit-level gate with an equal-input parameter-free MaxSim control
+- top-ranked attachment retrieval by default
+- high-patch SigLIP 2 re-encoding for selected, active attachments
 - a direct marked-pair head for MRE and start/end/max/width span enumeration
-  for MNER;
-- exact text-only behavior when a gate is off; and
-- an attachment-indexed patch bank that gathers only Top-R features instead
-  of copying every detailed patch representation across all MNER spans.
+  for MNER
+- a text-only path when the gate is off
+- an attachment-indexed patch bank that gathers only the selected detailed
+  patch features across MNER spans
 
-The selector also implements a guarded `selection_type: facility` option for
-real `K>=2` experiments. Configuration validation rejects facility-location
-with `K=1`, because a one-image budget cannot support a cross-selected-image
-diversity claim. Promote this option into the paper only if the five-seed,
-cost-matched ablation beats ordinary relevance Top-K.
+The selector also implements `selection_type: facility` for budgets that
+allow multiple selected attachments. Configuration validation rejects
+facility-location when the budget permits only one image.
 
 `models/saver.py` contains the architecture and simultaneous
-Clopper--Pearson calibration rule. `processor/saver_dataset.py` contains the
+Clopper–Pearson calibration rule. `processor/saver_dataset.py` defines the
 shared multi-image JSONL data contract. `modules/saver_trainer.py` implements
-forced-vision warm-up followed by gate-floor annealing, which prevents the
-sparse router from collapsing before the visual branch learns useful
-evidence. Training preserves `last.pt`, then reloads the best development
-checkpoint before calibration; `best.pt` and `final.pt` are deployment-ready.
+forced-vision warm-up and gate-floor annealing. Training saves `last.pt` and
+reloads the best development checkpoint before calibration. It also
+writes `best.pt` and `final.pt`.
 
 ## SAVER setup
 
-Install the new path independently from the frozen legacy environment:
+Install the dependencies for the top-level SAVER implementation.
 
 ```shell
 python -m pip install -r requirements-saver.txt
 ```
 
-Convert each official split to the schema in
-`data/manifest_schema.md`, then update the paths in
-`configs/saver_mre_mi.yaml` and `configs/saver_mner_mi_plus.yaml`.
+The MRE-MI and MNER-MI-Plus configurations expect the split format in
+[`data/manifest_schema.md`](data/manifest_schema.md).
 
-Validate a manifest without downloading either backbone:
+### Manifest validation and training examples
+
+The examples use the MRE-MI configuration. The corresponding MNER-MI-Plus
+configuration is `configs/saver_mner_mi_plus.yaml`.
 
 ```shell
 python run_saver.py --config configs/saver_mre_mi.yaml --mode validate-data
 ```
-
-Train one experiment:
 
 ```shell
 python run_saver.py \
@@ -59,16 +73,17 @@ python run_saver.py \
   --output-dir result/saver_mre_mi/seed_42
 ```
 
-Run the five-seed, single-GPU protocol on an NVIDIA A800 80GB:
+### Five-seed, single-GPU NVIDIA A800 protocol
 
 ```shell
 bash scripts/run_saver_a800.sh
 ```
 
-Profile a calibrated checkpoint with three runs, each using 100 warm-up and
-300 measured iterations. The timer excludes disk I/O and model loading, but
-includes preprocessing, host-to-device transfer, both backbone stages,
-routing, and the task head:
+### A800 checkpoint profiling
+
+The timer is designed to include preprocessing, host-to-device transfer,
+both backbone stages, routing, and the task head. Timing starts after disk
+I/O and model loading.
 
 ```shell
 bash scripts/profile_saver_a800.sh \
@@ -76,24 +91,49 @@ bash scripts/profile_saver_a800.sh \
   result/saver_mre_mi/seed_42/final.pt
 ```
 
-Run the network-free unit suite:
+### Unit tests
 
 ```shell
 python -m unittest discover -s tests -v
 ```
 
-Paper tables are deliberately not duplicated in this README. The per-seed
-`resolved_config.yaml`, `run_metadata.json`, `metrics.json`,
-`test_predictions.jsonl`, `calibration.json`, checkpoints, and
-`latency.json` are the only sources from which manuscript values should be
-filled.
+## Logged reproduction (reproduction/)
+
+See the [reproduction guide](reproduction/README.md) for code provenance,
+inputs, runner commands, and table generation.
+
+- In the original capped MNRE runs, always-vision test micro F1 was
+  `0.3759 ± 0.0142 (n=3)`, compared with `0.4013 ± 0.0170 (n=3)` for the
+  independently trained text-only model. [`p24_mre_main.md`](reproduction/results/tables/p24_mre_main.md)
+- The original SAVER checkpoint's all-off path had lower test F1 than
+  the independent text-only model at every logged seed. The paired deltas
+  were `-0.38269`, `-0.34510`, and `-0.36542`.
+  [`p24_phase3_R2_test.md`](reproduction/results/tables/p24_phase3_R2_test.md)
+- The uncapped A6 comparison was designed after earlier test results had
+  been seen. Selection used only the development set, and test results
+  were descriptive. Always-vision minus text-only development micro F1
+  was `-0.02863`, `0.00684`, and `0.00735` for the seeds in table
+  order. All paired whole-post bootstrap intervals included zero.
+  [`p24_phase5_A6_paired_s42.md`](reproduction/results/tables/p24_phase5_A6_paired_s42.md),
+  [`p24_phase5_A6_paired_s43.md`](reproduction/results/tables/p24_phase5_A6_paired_s43.md),
+  [`p24_phase5_A6_paired_s44.md`](reproduction/results/tables/p24_phase5_A6_paired_s44.md)
+- The registered uncapped decision recorded `Go = 0`, with `2` positive
+  seeds and `0` seeds with a positive confidence-interval lower bound.
+  The full development set also served for early stopping. The test set
+  was excluded from this decision. [`p24_phase5_C3.md`](reproduction/results/tables/p24_phase5_C3.md)
+
+- In the post hoc replay of the uncapped development set, the pooled
+  one-sided 95% upper bound on always-vision minus text-only micro F1 was
+  `0.01186`. The paired bootstrap shared post draws across the three
+  fitted models and was conditional on those models.
+  [`p24_phase6_E1a_dev.md`](reproduction/results/tables/p24_phase6_E1a_dev.md)
 
 ## Legacy RSRNeT
 
 ### The overall architecture of RSRNeT.
 ![image](architecture.jpg)
 
-### Performance comparison of the proposed method with different baseline methods
+### Historical RSRNeT performance comparison
 ![image](performance.jpg)
 
 Requirements

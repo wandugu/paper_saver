@@ -1,0 +1,58 @@
+id: P24-phase3-v1
+paper: P24
+registered_on: '2026-11-13'
+parent_commit: ddcd96373319c5386392fa2660dd6997eaa07332
+scope: Frozen phase1 SAVER and independent text_only checkpoints; MNRE only; no training, no seed replacement.
+seeds: [42, 43, 44]
+gates: []
+protocol:
+  unit: All relation pairs of a tokens-plus-images post; preserve official splits and audit cross-split duplicates.
+  development: Full official dev posts, not the historical 512-pair checkpoint-selection subset.
+  calibration_primary: Original held-out 10% training posts; remove none silently; flag official split overlap.
+  test: Lock every selection before opening test labels; score each distinct policy configuration once and cache identical actions across selectors. All-threshold test frontier is descriptive, never used to select.
+  guarantee: Per seed, conditional on frozen checkpoint and independent calibration posts; no simultaneous three-seed guarantee or claim of new untouched test data.
+R1:
+  alpha: 0.10
+  delta: 0.05
+  harm: max(0, routed pair errors minus same-checkpoint all-off pair errors) / pairs in post
+  bound: One-sided exact CP on positive-post-harm indicator; Bonferroni over all nontrivial policies in the declared family; all-off has exact zero harm.
+  thresholds: {start: 0.0, stop: 1.0, points: 101}
+  harm_penalties: [0.0]
+  score: gate_probability - eta * (1 - gate_probability)
+  penalty_limitation: No independently trained harm head exists. One-minus-gate is only a declared proxy; penalties reparameterize the same ranking, not a learned harm estimate. Report nominal and effective family sizes.
+  selectors: [max_coverage, max_dev_f1, value_distinct, value_latency]
+  utility_distinct: dev_micro_F1 minus same-checkpoint all-off dev_micro_F1 minus lambda * dev_mean_distinct_detail_images_per_post
+  lambda_distinct: [0.0, 0.01, 0.05, 0.10, 0.25, 0.50, 1.0]
+  primary_lambda_distinct: 0.10
+  utility_latency: dev_micro_F1 minus same-checkpoint all-off dev_micro_F1 minus lambda * dev_mean_latency_ms_per_post
+  lambda_latency_per_ms: [0.0, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05]
+  primary_lambda_latency_per_ms: 0.01
+  ties: Higher utility, lower cost, lower UCB, larger threshold, lower eta, deterministic policy ID. Max-coverage ties use lower threshold to reproduce phase2.
+  fallback: If no nonempty policy satisfies UCB, deploy all-off and flag fallback. All-off can also be chosen by utility without being a fallback.
+  latency: Prefer same-checkpoint synchronized cold R2 audit timing endpoints on first 32 sorted whole dev posts, three repetitions; deduplicate detail images within post. CPU replay uses measured off/on latency per measured post, population mean for unmeasured posts; mark extrapolated values, never call them direct per-policy measurements. If unavailable, use existing matched-architecture profile endpoints and disclose source; missing timing remains null.
+  frontier: All feasible thresholds plus all-off on dev and once-locked descriptive test; non-dominance over maximize F1, minimize empirical post harm, distinct details, latency.
+  regret: F1 regret equals best feasible split F1 minus selected F1; latency regret equals selected latency minus minimum feasible split latency. Splitwise descriptive oracles, not alternate deployable choices. Also record latency regret among policies with F1 at least selected F1.
+R2:
+  checkpoints: Original independently trained phase1 ModernBERT-only and same-seed phase1 SAVER best.pt; no retraining if missing.
+  splits: [dev, test]
+  inference: Reuse complete frozen logs when possible; materialize absent dev branches once. Preserve existing test predictions; extract only missing counterfactuals and never retune.
+  paired: Whole-post disagreement, normalized correctness delta, micro-F1 delta, post-cluster paired bootstrap 2000 draws with seed 20261113 plus model seed; CI is descriptive.
+  deployment: Report every predeclared R1 selector against both references, distinguishing same-checkpoint guarantee from external comparison.
+R3:
+  score: Mean unit gate probability within post; labels are positive whole-post normalized 0-1 accuracy gain of forced-on versus same-checkpoint all-off.
+  metrics: Post AUROC and non-tied pairwise rank concordance, gate>=0.5 sign agreement, per-unit gate AUROC against its parent-post gain; separately dev/test and no causal/MNER claim.
+  zero_gain: Treat zero as negative for AUROC; report positive/negative/zero counts and tie-aware ranking.
+R4:
+  penalty_families: [[0.0], [0.0, 0.5, 1.0], [0.0, 0.25, 0.5, 1.0, 2.0]]
+  calibration_fractions: [0.02, 0.05, 0.10, 0.20]
+  population: Nested original seed-shuffled calibration-post prefix for <=10%; 20% extends original holdout with seed-shuffled training posts never used in that checkpoint's fit, keeping all pairs. Exclude any actually fitted post; report sizes and overlap audit. This is post-hoc sensitivity, not retraining with a changed fit split.
+  inference: Reuse original calibration branch logs; absent extension predictions computed CPU-only from frozen checkpoints and cached encoder features; never substitute fitted posts or duplicate samples.
+  correction: Nominal nontrivial family size 101 times penalty count, even when actions duplicate; exact all-off excluded. Separate sensitivity confidence statements, not a simultaneous sweep guarantee.
+  selector: Primary value_distinct lambda=0.10; also max_coverage, max_dev_f1, primary value_latency lambda=0.01.
+  metrics: Nominal/effective policy size, n calibration posts, empirical harm, UCB, UCB-minus-empirical-positive-harm, feasible count/rate, F1, detail/post, measured-endpoint replay latency, fallback rate across all three seeds.
+R5:
+  data: Distinct posts by canonical tokens-plus-images; additionally image ID and normalized text identity; enumerate official split intersections and actual fit/calibration leakage, no silent repartition.
+  timing: CPU summarize logged synchronized components if present; otherwise explicitly mark absent. Never derive stage milliseconds from FLOP shares.
+  routers: Audit actual executed phase2 code/config for features, labels, losses, regularizers, parameters, and teacher; cite file paths, line numbers, source commit and SHA256. Scope findings to the code and configurations actually run.
+resources:
+  launch: Every experiment via python -m repro.run; all numeric tables via python -m repro.make_tables.

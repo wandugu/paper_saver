@@ -1,0 +1,19 @@
+{
+  "SE_pool_dev": 0.010122673497301973,
+  "ceil_steps": 7,
+  "e1_metrics_sha256": "9f5d0386a29cdd9db2dd1b9031c23d03cacaf56a0205267a7aba3b516aa1cd97",
+  "e1_prereg_sha256": "7e5aee19c1ba49fe27f0a11dba52830cd9402c9ff2948ed03fd38fed2a5b3bb8",
+  "e1_run_id": "P24_phase6_e1_s0_20261118T064635Z_7318f3",
+  "epsilon": 0.035,
+  "epsilon_raw": 0.03330359580612349,
+  "grid_step": 0.005,
+  "inconclusive_probability_approx": 0.03494795736186351,
+  "lower_bound": 0.02,
+  "normal_critical": 1.645,
+  "null_bounded_probability_approx": 0.9650520426381365,
+  "null_z": 1.8125846004841173,
+  "rounded": 0.035,
+  "scope": "Single-bound normal approximation at true effect zero and the E1 dev SE; not the joint dev/test probability.",
+  "upper_bound": 0.05,
+  "upper_clipped": false
+}

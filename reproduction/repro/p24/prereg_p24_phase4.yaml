@@ -1,0 +1,67 @@
+id: P24-phase4-v1
+registered_on: "2026-11-13"
+parent_commit: 80c20d73ef6a2486417d7a02f0e63f88baa82153
+gates: []
+version: p24-phase4
+paper: P24
+title: Dual risk-cost certificate replay and matched baseline recalibration
+status: preregistered
+date: 2026-11-13
+scope:
+  claim: Single-image multimodal relation extraction; frozen checkpoints and existing logits only.
+  training_updates: 0
+  new_test_forward_passes: 0
+resources:
+  device: cpu
+  gpu_hours: 0
+data:
+  seeds: [42, 43, 44]
+  calibration_fractions: [0.02, 0.05, 0.10, 0.20]
+  calibration_population: Same nested post-disjoint populations and fit-overlap exclusion as phase3 R4; 20% uses unused training posts only.
+  splits: [calibration, dev, test]
+  test_rule: Every method-policy-cap configuration reuses an existing frozen test log and is scored once; no test retuning.
+  methods:
+    saver: Existing phase3 frozen SAVER logits/checkpoint.
+    maxsim: Existing phase1 MaxSim logits/checkpoint.
+    linear: Existing formal phase2 Linear router logits/checkpoint; no new training.
+    utility_mlp_k1: Existing formal phase2 UtilityMLP-K1 router logits/checkpoint; no new training.
+    random_gate: Rate-matched gate only; no learned checkpoint and no test-label matching.
+policy_family:
+  thresholds: "0.00:1.00 inclusive in steps of 0.01"
+  eta: [0.0]
+  all_off: Explicit off policy with zero harm and zero incremental cost.
+certificates:
+  alpha_harm: 0.10
+  delta: 0.05
+  harm: Exact one-sided Clopper-Pearson upper bound on positive structured-harm post indicators, with family-wise failure delta/(2*family_size); same checkpoint all-off is the reference.
+  cost_variable: B_p(policy) = distinct selected detail-image count divided by max(1, number of valid images in post), equal to executed incremental detail-path cost relative to always-detail; B is in [0,1], all-off is zero, and no wall-clock guarantee is claimed.
+  cost_ucb: Hoeffding one-sided upper bound min(1, mean(B) + sqrt(log(2*family_size/delta)/(2*n_calibration_posts))), simultaneous with harm by the remaining factor 2.
+  caps: [0.25, 0.35, 0.50]
+  feasible: Both harm UCB <= alpha_harm and cost UCB <= cap; if no nonempty policy is feasible, deploy all-off and flag fallback.
+  selection: Among feasible nonempty policies, maximize development micro-F1; ties use lower empirical cost, then larger threshold, then deterministic policy id.
+  harm_only_reference: Phase3 max-coverage selector under harm UCB only; report its cost UCB and cap violations descriptively.
+  max_dev_f1_reference: Phase3 max-development-F1 selector under harm UCB only; report its cost UCB and cap violations descriptively.
+  cost_penalty_reference: Phase3 main distinct-cost selector, lambda=0.10, under harm UCB only; report its cost UCB and cap violations descriptively.
+reported_metrics:
+  per_seed: [threshold, harm_ucb, cost_ucb, test_f1, test_harm, detail_per_post, replay_latency_ms, f1_delta_vs_independent_modernbert, f1_regret, fallback, feasible_nonempty]
+  cost: Report empirical normalized cost and cost UCB separately; latency remains the phase3 endpoint-mixture proxy unless D4 runs.
+  reference: Independent ModernBERT-only test F1 from frozen phase1 logs; no same-checkpoint guarantee is transferred to this reference.
+D2:
+  selector: The same dual-certificate selector, alpha, delta, caps, family, and tie-breaks as D1, applied independently to MaxSim, Linear, UtilityMLP-K1, and SAVER logits.
+  missing_logits: If a requested baseline lacks complete calibration/dev/test logits for a seed, report missing and do not infer or retrain.
+  random_gate: For each seed and cap, sample five deterministic random seeds [2401, 2402, 2403, 2404, 2405]; on test, match the SAVER dual-selected realized activation rate for that cap without using test labels, and report mean and min/max interval.
+D3:
+  frequency: For every cap, seed, calibration fraction, and requested baseline, report nonempty dual-feasible frequency and all-off fallback frequency; calibration feasibility is computed before test scoring.
+  confidence: Frequencies are empirical over the three registered seeds and are not pooled confidence guarantees.
+D4:
+  optional: true
+  methods: [always_detail, maxsim, utility_mlp_k1, saver]
+  batch_sizes: [1, 8, 16, 32]
+  device: Use the configured host's exclusive physical GPU2 for the optional timing measurement.
+  protocol: Three warmup and ten measured repetitions per batch size over the same frozen test posts; CUDA events for end-to-end mean/P90, posts_per_second, GPU utilization samples, peak memory; CUDA events also split 64-patch screening, high-resolution encoding, and fusion when instrumentation is available.
+  budget: Skip and record the reason if the device already has a lock or the protocol cannot be completed safely.
+provenance:
+  launcher: Every run is launched by python -m repro.run.
+  tables: Numeric tables are generated only by python -m repro.make_tables.
+  no_manual_numbers: true
+  no_training: true
